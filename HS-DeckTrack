@@ -1,0 +1,65 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Std;
+
+my %opts;
+my $logfile;
+my $deckfile;
+my %deck_hash;
+my %op_played_hash;
+my %hero_mull_hash;
+my %hero_drawn_hash;
+my %hero_played_hash;
+
+getopts ('d:l:', \%opts);
+$logfile = $opts{l} // '~/Library/Logs/Unity/Player.log';
+$deckfile = $opts{d} // '';
+
+print "logfile:" . $logfile . "\n";
+print "deckfile:" . $deckfile. "\n";
+
+open DECKFILE, $deckfile
+  or die "Could not open Deck:\"$deckfile\" for reading: $!\n";
+
+while (my $line = <DECKFILE>) {
+  chomp($line);
+  $deck_hash{$line} += 1;
+}
+
+close DECKFILE;
+
+open LOGFILE, $logfile
+  or die "Could not open Log:\"$logfile\" for reading: $!\n";
+
+while (<LOGFILE>) {
+  if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY DECK /) {
+    $hero_drawn_hash{$1} += 1;
+  }
+  if (/^\[Zone.*\[name=(.*) id=.*zone=DECK.* FRIENDLY DECK$/) {
+    $hero_mull_hash{$1} += 1;
+  }
+  if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY HAND /) {
+    $hero_played_hash{$1} += 1;
+  }
+  if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* OPPOSING HAND /) {
+    $op_played_hash{$1} += 1;
+  }
+  # Requires 'Bob' logging enabled. Blow away old/previous game data
+  if (/^\[Bob.*legend rank /) {
+    %op_played_hash = ();
+    %hero_mull_hash = ();
+    %hero_drawn_hash = ();
+    %hero_played_hash = ();
+  }
+}
+
+close LOGFILE;
+
+print Dumper(\%hero_drawn_hash);
+print Dumper(\%hero_mull_hash);
+print Dumper(\%hero_played_hash);
+print Dumper(\%op_played_hash);
+print Dumper(\%deck_hash);
