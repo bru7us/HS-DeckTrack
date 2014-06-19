@@ -64,6 +64,6 @@ TODO
 * Allow user to define refresh/sleep period
 
 
-If you'd like to donate:
-  .. image:: https://www.paypal.com/en_US/i/btn/btn_donate_LG.gif
-    :target: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=W3UX3VM22WRQY&item_name=HS-DeckTrack
+If you'd like to:
+[![PayPal](https://www.paypal.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=W3UX3VM22WRQY&item_name=HS-DeckTrack)
+
