@@ -30,30 +30,31 @@ As soon as a game ends, the game state will reset to a new full deck.
 
 Example
 -------
+```
     Bru7us:HS-DeckTrack bru7us$ ./HS-DeckTrack -d examples/zoo.deck 
     
     Cards in Deck:
     
-    Shieldbearer             2
-    Harvest Golem            2
-    Voidwalker               2
-    Shattered Sun Cleric     2
-    Soulfire                 2
-    Abusive Sergeant         2
-    Defender of Argus        2
-    Doomguard                2
-    Scarlet Crusader         2
-    Dark Iron Dwarf          2
-    Flame Imp                2
-    Dire Wolf Alpha          2
-    Mortal Coil              2
-    Argent Squire            2
-    Knife Juggler            2
+    Shieldbearer             2  
+    Harvest Golem            2  
+    Voidwalker               2  
+    Shattered Sun Cleric     2  
+    Soulfire                 2  
+    Abusive Sergeant         2  
+    Defender of Argus        2  
+    Doomguard                2  
+    Scarlet Crusader         2  
+    Dark Iron Dwarf          2  
+    Flame Imp                2  
+    Dire Wolf Alpha          2  
+    Mortal Coil              2  
+    Argent Squire            2  
+    Knife Juggler            2  
     
     
     
     Cards Played:
-
+```
 
 TODO
 ----
