@@ -1,5 +1,16 @@
 #!/usr/bin/perl
 
+##
+## Title:         HS-DeckTrack
+## Description:   A Terminal-based Deck Tracker for Hearthstone
+## Author:        Dave Russell (bru7us)
+## 
+## Version:       0.1
+## Modified:      19 Jun 2014
+##
+## License:       MIT (https://github.com/bru7us/HS-DeckTrack/blob/master/LICENSE)
+##
+
 use strict;
 use warnings;
 use Data::Dumper;
