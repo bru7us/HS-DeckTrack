@@ -3,8 +3,8 @@ HS-DeckTrack
 
 A Terminal-based Deck Tracker for Hearthstone on MacOS
 
-Inspired by this thread: http://www.reddit.com/r/hearthstone/comments/26seey/automatic_deck_tracker_and_more_with_ingame/
-Original credit for the logging tips from: http://www.reddit.com/r/hearthstone/comments/268fkk/simple_hearthstone_logging_see_your_complete_play/
+Inspired by [this Reddit thread](http://www.reddit.com/r/hearthstone/comments/26seey/automatic_deck_tracker_and_more_with_ingame/)  
+Original credit for the logging tips from: [Flipperbw](http://www.reddit.com/r/hearthstone/comments/268fkk/simple_hearthstone_logging_see_your_complete_play/)
 
 I've thrown this together as a quick hack for those of us who play on MacOS.
 Of course, if you're just a Terminal junky, it's Perl, so you can run it wherever you like!
@@ -13,20 +13,21 @@ If you have the screen real-estate, just keep the Terminal window visible on one
 
 Requirements
 ------------
-All you really need is the perl script 'HS-DeckTrack' and a deck file, but you can clone the whole project if you like.
+All you really need is the perl script 'HS-DeckTrack' and a deck file, but you can clone the whole project if you like.  
+
 Your log.config must have [Zone] and [Bob] console printing enabled. See examples/log.config or copy it to ~/Library/Preferences/Blizzard/Hearthstone/log.config
 
 Decks
 -----
-You'll need to create deck files yourself for now. Just a simple text file with the (case sensitive) card names.
-See a couple of samples in the examples/ directory. Cards with multiples must be entered multiple times.
+You'll need to create deck files yourself for now. Just a simple text file with the (case sensitive) card names.  
+See a couple of samples in the examples/ directory. Cards with multiples must be entered multiple times.  
 Card order is not important.
 
 Usage
 -----
-Simply copy HS-DeckTrack, make it executable (`chmod +x /path/to/HS-DeckTrack`) and run it in a Terminal window. Basic help will be printed to get you going.
-Screen will refresh every 2 seconds showing the curent state of your latest game.
-As soon as a game ends, the game state will reset to a new full deck.
+Simply copy HS-DeckTrack, make it executable (`chmod +x /path/to/HS-DeckTrack`) and run it in a Terminal window. Basic help will be printed to get you going.  
+Screen will refresh every 2 seconds showing the curent state of your latest game.  
+As soon as a game ends, the game state will reset to a new full deck.  
 
 Example
 -------
