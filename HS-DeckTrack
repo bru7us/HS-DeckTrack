@@ -5,7 +5,7 @@
 ## Description:   A Terminal-based Deck Tracker for Hearthstone
 ## Author:        Dave Russell (bru7us)
 ## 
-## Version:       0.1
+## Version:       0.2
 ## Modified:      19 Jun 2014
 ##
 ## License:       MIT (https://github.com/bru7us/HS-DeckTrack/blob/master/LICENSE)
@@ -23,11 +23,16 @@ my $deckfile;
 my %deck_hash;
 my %game_hash;
 my %op_played_hash;
+my %op_discard_hash;
+my %hero_discard_hash;
+my %hero_burned_hash;
 my %hero_mull_hash;
 my %hero_drawn_hash;
 my %hero_played_hash;
 my $DEBUG;
 my $card;
+
+$| = 1; #Disable print buffering
 
 sub usage {
     select(STDERR);
@@ -36,13 +41,14 @@ sub usage {
     printf("    -h show this help\n");
     printf("    -d <path> Path to a file containing your deck. Compulsory!\n");
     printf("    -l <path> Path to the Hearthstone log file. Default: ~/Library/Logs/Unity/Player.log\n");
-    printf("    -o Print cards played by Opponent");
+    printf("    -o Print cards revealed played by Opponent");
+    printf("    -m Highlight Milled/Discarded cards");
     printf("    -X print debug messages to STDOUT\n");
     printf("");
     exit(1);
 }
 
-getopts ('d:hl:oX', \%opts);
+getopts ('d:hl:moX', \%opts);
 &usage if $opts{'h'};
 $DEBUG = 1 if $opts{'X'};
 
@@ -69,7 +75,7 @@ close DECKFILE;
 
 while (1) {
 
-  print "\033[2J";    #clear the screen
+  print "\033[2J";   #clear the screen
   print "\033[0;0H"; #jump to 0,0
 
   open LOGFILE, $logfile
@@ -85,12 +91,24 @@ while (1) {
     if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY HAND /) {
       $hero_played_hash{$1} += 1;
     }
+    if (/^\[Zone.*\[name=(.*) id=.*zone=GRAVEYARD.* FRIENDLY DECK /) {
+      $hero_burned_hash{$1} += 1;
+    }
+    if (/^\[Zone.*\[name=(.*) id=.*zone=GRAVEYARD.* FRIENDLY HAND /) {
+      $hero_discard_hash{$1} += 1;
+    }
+    if (/^\[Zone.*\[name=(.*) id=.*zone=GRAVEYARD.* OPPOSING (DECK|HAND) /) {
+      $op_discard_hash{$1} += 1;
+    }
     if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* OPPOSING HAND /) {
       $op_played_hash{$1} += 1;
     }
     # Requires 'Bob' logging enabled. Blow away old/previous game data if we found the end of a game
     if (/^\[Bob.*legend rank /) {
       %op_played_hash = ();
+      %op_discard_hash = ();
+      %hero_discard_hash = ();
+      %hero_burned_hash = ();
       %hero_mull_hash = ();
       %hero_drawn_hash = ();
       %hero_played_hash = ();
@@ -99,11 +117,14 @@ while (1) {
   }
   
   close LOGFILE;
-  
+
   print Dumper(\%hero_drawn_hash) if ($DEBUG);
   print Dumper(\%hero_mull_hash) if ($DEBUG);
   print Dumper(\%hero_played_hash) if ($DEBUG);
+  print Dumper(\%hero_discard_hash) if ($DEBUG);
+  print Dumper(\%hero_burned_hash) if ($DEBUG);
   print Dumper(\%op_played_hash) if ($DEBUG);
+  print Dumper(\%op_discard_hash) if ($DEBUG);
   print Dumper(\%game_hash) if ($DEBUG);
   
   # Take cards that have been drawn out of the deck
@@ -116,6 +137,28 @@ while (1) {
     $game_hash{$card} += $hero_mull_hash{$card};
   }
   
+  # Throw away the burned/milled cards
+  foreach $card (keys %hero_burned_hash) {
+    $game_hash{$card} -= $hero_burned_hash{$card};
+  }
+
+  # Dump milled/burned cards into the 'Played' hashes if '-m' selected, otherwise combine.
+  if ( $opts{m} ) {
+    foreach $card (keys %hero_burned_hash) {
+      $hero_discard_hash{$card} += $hero_burned_hash{$card};
+    }
+  } else {
+    foreach $card (keys %hero_burned_hash) {
+      $hero_played_hash{$card} += $hero_burned_hash{$card};
+    }
+    foreach $card (keys %hero_discard_hash) {
+      $hero_played_hash{$card} += $hero_discard_hash{$card};
+    }
+    foreach $card (keys %op_discard_hash) {
+      $op_played_hash{$card} += $op_discard_hash{$card};
+    }
+  }
+
   # Print the current remaining cards in the deck
   printf("Cards in Deck:\n\n");
   foreach $card (keys %game_hash) {
@@ -127,13 +170,30 @@ while (1) {
   foreach $card (keys %hero_played_hash) {
     printf("%-24s %d\n", $card, $hero_played_hash{$card}) if $hero_played_hash{$card} > 0;
   }
+  if ( $opts{m} ) {
+    # Highlight milled/discarded cards separately
+    foreach $card (keys %hero_discard_hash) {
+      printf("%-24s %d*\n", $card, $hero_discard_hash{$card}) if $hero_discard_hash{$card} > 0;
+    }
+  }
   
-  # Print the opponent's played cards if '-o' selected
+  # Print the opponent's revealed cards if '-o' selected
   if ( $opts{o} ) {
-    printf("\n\n\nOpponent Played:\n\n");
+    printf("\n\n\nOpponent Cards Revealed:\n\n");
     foreach $card (keys %op_played_hash) {
       printf("%-24s %d\n", $card, $op_played_hash{$card}) if $op_played_hash{$card} > 0;
     }
+    if ( $opts{m} ) {
+      # Highlight milled/discarded cards separately
+      foreach $card (keys %op_discard_hash) {
+        printf("%-24s %d*\n", $card, $op_discard_hash{$card}) if $op_discard_hash{$card} > 0;
+      }
+    }
+  }
+
+  if ( $opts{m} ) {
+    # Legend
+    printf("\n\n*Burned or Discarded");
   }
 
   sleep 2;
