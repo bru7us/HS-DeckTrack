@@ -4,22 +4,44 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Getopt::Std;
+use Env qw(HOME);
 
 my %opts;
 my $logfile;
 my $deckfile;
 my %deck_hash;
+my %game_hash;
 my %op_played_hash;
 my %hero_mull_hash;
 my %hero_drawn_hash;
 my %hero_played_hash;
+my $DEBUG;
+my $card;
 
-getopts ('d:l:', \%opts);
-$logfile = $opts{l} // '~/Library/Logs/Unity/Player.log';
+sub usage {
+    select(STDERR);
+    printf("\nUsage: [options]");
+    printf("\n");
+    printf("    -h show this help\n");
+    printf("    -d <path> Path to a file containing your deck. Compulsory!\n");
+    printf("    -l <path> Path to the Hearthstone log file. Default: ~/Library/Logs/Unity/Player.log\n");
+    printf("    -o Print cards played by Opponent");
+    printf("    -X print debug messages to STDOUT\n");
+    printf("");
+    exit(1);
+}
+
+getopts ('d:hl:oX', \%opts);
+&usage if $opts{'h'};
+$DEBUG = 1 if $opts{'X'};
+
+$logfile = $opts{l} // $ENV{HOME}.'/Library/Logs/Unity/Player.log';
 $deckfile = $opts{d} // '';
 
-print "logfile:" . $logfile . "\n";
-print "deckfile:" . $deckfile. "\n";
+&usage if ($deckfile eq '');
+
+print "logfile:" . $logfile . "\n" if ($DEBUG);
+print "deckfile:" . $deckfile. "\n" if ($DEBUG);
 
 open DECKFILE, $deckfile
   or die "Could not open Deck:\"$deckfile\" for reading: $!\n";
@@ -31,35 +53,77 @@ while (my $line = <DECKFILE>) {
 
 close DECKFILE;
 
-open LOGFILE, $logfile
-  or die "Could not open Log:\"$logfile\" for reading: $!\n";
+%game_hash = %deck_hash;
 
-while (<LOGFILE>) {
-  if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY DECK /) {
-    $hero_drawn_hash{$1} += 1;
+
+while (1) {
+
+  print "\033[2J";    #clear the screen
+  print "\033[0;0H"; #jump to 0,0
+
+  open LOGFILE, $logfile
+    or die "Could not open Log:\"$logfile\" for reading: $!\n";
+  
+  while (<LOGFILE>) {
+    if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY DECK /) {
+      $hero_drawn_hash{$1} += 1;
+    }
+    if (/^\[Zone.*\[name=(.*) id=.*zone=DECK.* FRIENDLY DECK$/) {
+      $hero_mull_hash{$1} += 1;
+    }
+    if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY HAND /) {
+      $hero_played_hash{$1} += 1;
+    }
+    if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* OPPOSING HAND /) {
+      $op_played_hash{$1} += 1;
+    }
+    # Requires 'Bob' logging enabled. Blow away old/previous game data if we found the end of a game
+    if (/^\[Bob.*legend rank /) {
+      %op_played_hash = ();
+      %hero_mull_hash = ();
+      %hero_drawn_hash = ();
+      %hero_played_hash = ();
+      %game_hash = %deck_hash;
+    }
   }
-  if (/^\[Zone.*\[name=(.*) id=.*zone=DECK.* FRIENDLY DECK$/) {
-    $hero_mull_hash{$1} += 1;
+  
+  close LOGFILE;
+  
+  print Dumper(\%hero_drawn_hash) if ($DEBUG);
+  print Dumper(\%hero_mull_hash) if ($DEBUG);
+  print Dumper(\%hero_played_hash) if ($DEBUG);
+  print Dumper(\%op_played_hash) if ($DEBUG);
+  print Dumper(\%game_hash) if ($DEBUG);
+  
+  # Take cards that have been drawn out of the deck
+  foreach $card (keys %hero_drawn_hash) {
+    $game_hash{$card} -= $hero_drawn_hash{$card};
   }
-  if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY HAND /) {
-    $hero_played_hash{$1} += 1;
+  
+  # Put back any mulligans
+  foreach $card (keys %hero_mull_hash) {
+    $game_hash{$card} += $hero_mull_hash{$card};
   }
-  if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* OPPOSING HAND /) {
-    $op_played_hash{$1} += 1;
+  
+  # Print the current remaining cards in the deck
+  printf("Cards in Deck:\n\n");
+  foreach $card (keys %game_hash) {
+    printf("%-24s %d\n", $card, $game_hash{$card}) if $game_hash{$card} > 0;
   }
-  # Requires 'Bob' logging enabled. Blow away old/previous game data
-  if (/^\[Bob.*legend rank /) {
-    %op_played_hash = ();
-    %hero_mull_hash = ();
-    %hero_drawn_hash = ();
-    %hero_played_hash = ();
+  
+  # Print the cards that you've played
+  printf("\n\n\nCards Played:\n\n");
+  foreach $card (keys %hero_played_hash) {
+    printf("%-24s %d\n", $card, $hero_played_hash{$card}) if $hero_played_hash{$card} > 0;
   }
+  
+  # Print the opponent's played cards if '-o' selected
+  if ( $opts{o} ) {
+    printf("\n\n\nOpponent Played:\n\n");
+    foreach $card (keys %op_played_hash) {
+      printf("%-24s %d\n", $card, $op_played_hash{$card}) if $op_played_hash{$card} > 0;
+    }
+  }
+
+  sleep 2;
 }
-
-close LOGFILE;
-
-print Dumper(\%hero_drawn_hash);
-print Dumper(\%hero_mull_hash);
-print Dumper(\%hero_played_hash);
-print Dumper(\%op_played_hash);
-print Dumper(\%deck_hash);
