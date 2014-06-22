@@ -25,9 +25,10 @@ Card order is not important.
 
 Usage
 -----
-Simply copy HS-DeckTrack, make it executable (`chmod +x /path/to/HS-DeckTrack`) and run it in a Terminal window. Basic help will be printed to get you going.  
+Simply copy HS-DeckTrack, make it executable (`chmod +x /path/to/HS-DeckTrack`) and run it in a Terminal window. If you run with `-h`, basic help will be printed to get you going.  
 Screen will refresh every 2 seconds showing the curent state of your latest game.  
-As soon as a game ends, the game state will reset to a new full deck.  
+As soon as a game ends, the game state will reset to a new full deck. 
+The script can be started mid-game and will still have the current state (thanks to the fact the we are just parsing the logs).  
 
 Example
 -------
@@ -57,12 +58,31 @@ Example
     Cards Played:
 ```
 
+Change Log
+----------
+
+Version: 0.3  Released: 21 June 2014
+
+* Tracking of Opponent Secrets (Friendly already worked as regular card plays)
+* Get mana cost of cards from local Hearthstone data and cache it
+* Disply mana cost if we can get it from the local cache
+* Allow tracking of revealed cards without a deck file
+* Some code tidy-up
+
+Version: 0.2  Released: 19 June 2014
+
+* Correctly track burned and discarded cards
+
+Version: 0.1  Released: 18 June 2014
+
+* Initial release
+
 TODO
 ----
-* Add Mana cost of all cards
 * Sort/Display by mana cost
 * Optional: Display cards in hand (but why? we can see them already)
 * Allow user to define refresh/sleep period
+* Check for and set up the log.config if needed
 
 
 If you'd like to:

@@ -5,15 +5,18 @@
 ## Description:   A Terminal-based Deck Tracker for Hearthstone
 ## Author:        Dave Russell (bru7us)
 ## 
-## Version:       0.2
-## Modified:      19 Jun 2014
+## Version:       0.3
+## Modified:      21 Jun 2014
 ##
 ## License:       MIT (https://github.com/bru7us/HS-DeckTrack/blob/master/LICENSE)
 ##
 
 use strict;
 use warnings;
+use Cwd 'abs_path';
+use File::Basename;
 use Data::Dumper;
+use XML::Simple;
 use Getopt::Std;
 use Env qw(HOME);
 
@@ -31,21 +34,128 @@ my %hero_drawn_hash;
 my %hero_played_hash;
 my $DEBUG;
 my $card;
+my $cards_src;
+my $cards_db;
+my %card_cost;
 
 $| = 1; #Disable print buffering
 
 sub usage {
-    select(STDERR);
-    printf("\nUsage: [options]");
-    printf("\n");
-    printf("    -h show this help\n");
-    printf("    -d <path> Path to a file containing your deck. Compulsory!\n");
-    printf("    -l <path> Path to the Hearthstone log file. Default: ~/Library/Logs/Unity/Player.log\n");
-    printf("    -o Print cards revealed played by Opponent");
-    printf("    -m Highlight Milled/Discarded cards");
-    printf("    -X print debug messages to STDOUT\n");
-    printf("");
-    exit(1);
+  select(STDERR);
+  printf("\nUsage: [options]");
+  printf("\n");
+  printf("    -h show this help\n");
+  printf("    -d <path> Path to a file containing your deck. Compulsory!\n");
+  printf("    -l <path> Path to the Hearthstone log file. Default: ~/Library/Logs/Unity/Player.log\n");
+  printf("    -o Print cards revealed by Opponent");
+  printf("    -m Highlight Milled/Discarded cards");
+  printf("    -X print debug messages to STDOUT\n");
+  printf("");
+  exit(1);
+}
+
+sub print_cards {
+  my $cards = shift;
+  my $mark = shift // '';
+  my $cost;
+
+  foreach my $key (keys %{ $cards }) {
+    if ((scalar keys %card_cost) > 1) {
+      $cost = $card_cost{$key} // '?';
+      printf(" %-3s| ",$cost) if $cards->{$key} > 0;
+    }
+    printf("%-24s %d".$mark."\n", $key, $cards->{$key}) if $cards->{$key} > 0;
+  }
+}
+
+sub refresh_cards_cache {
+
+  my $found_xml; 
+  my $dbtimestamp;
+  my $cachetimestamp;
+
+  # Check if cache exists
+  $cachetimestamp = load_cache_db();
+
+  # Check if cache is up to date
+  $dbtimestamp = (stat $cards_src)[9];
+  if ($dbtimestamp == $cachetimestamp) {
+    return; #current cache matches the mod time on the db file
+  }
+
+  # We get here if cache is stale or doesn't exist
+  print "Refreshing cache..." if ($DEBUG);
+
+  # Wrap the root xml element and a timestamp around the card data
+  open CARDSRC, '<', $cards_src
+    or return;
+
+  open CARDCACHE, '>', $cards_db
+    or return;
+
+  print CARDCACHE "<xml>\n";
+  print CARDCACHE "<dbtimestamp>".(stat $cards_src)[9]."</dbtimestamp>\n";
+
+  $found_xml = 0;
+
+  while ( my $line = <CARDSRC> ) {
+    if ( !$found_xml ) {
+      if ($line =~ m/(<Entity.*>)/) {
+        print CARDCACHE $1."\n";
+        $found_xml = 1;
+      }
+    } else {
+      if ($line =~ m/(<\/Entity>).*/) {
+        print CARDCACHE $1."\n";
+      } elsif ($line =~ m/^\s*<.*>\s*$/) {
+        #if ($line =~ m/(Entity|Tag|enUS)/) {
+          $line =~ s/\r//g; 
+          print CARDCACHE $line;
+        #}
+      }
+    }
+  }
+
+  print CARDCACHE "</xml>";
+
+  close CARDCACHE;
+  close CARDSRC;
+
+  load_cache_db();
+}
+
+sub load_cache_db {
+  my $load_failed = 0;
+  my $xml = XML::Simple->new;
+  my $xmldata;
+
+  if ( -e $cards_db ) {
+    $xmldata = $xml->XMLin($cards_db, KeyAttr => { Entity => 'CardID', Tag => 'name' }) or $load_failed = 1;
+  } else {
+    $load_failed = 1;
+  }
+
+  if (!$load_failed) {
+    foreach my $entity ( keys $xmldata->{Entity} ) {
+      if (!($entity =~ m/XXX/)) {
+        my $tmpname = $xmldata->{Entity}->{$entity}->{Tag}->{CardName}->{enUS} // 0;
+        my $tmpcost = $xmldata->{Entity}->{$entity}->{Tag}->{Cost}->{value} // '?';
+        if ($tmpname) {
+          if ( (!defined $card_cost{$tmpname}) || ( (defined $card_cost{$tmpname}) && ($tmpcost ne '?') ) ) {
+            $card_cost{$tmpname} = $tmpcost;
+          }
+        }
+      }
+    }
+  }
+
+  # If something failed, just proceed without mana cost feature
+  if ( $load_failed ) {
+    %card_cost = ();
+    return 0;
+  } else {
+    return $xmldata->{dbtimestamp}
+  }
 }
 
 getopts ('d:hl:moX', \%opts);
@@ -54,24 +164,27 @@ $DEBUG = 1 if $opts{'X'};
 
 $logfile = $opts{l} // $ENV{HOME}.'/Library/Logs/Unity/Player.log';
 $deckfile = $opts{d} // '';
-
-&usage if ($deckfile eq '');
+$cards_src = '/Applications/Hearthstone/Data/OSX/cardxml0.unity3d';
+$cards_db = dirname(abs_path($0)).'/extracted_cards.xml';
 
 print "logfile:" . $logfile . "\n" if ($DEBUG);
 print "deckfile:" . $deckfile. "\n" if ($DEBUG);
 
-open DECKFILE, $deckfile
-  or die "Could not open Deck:\"$deckfile\" for reading: $!\n";
-
-while (my $line = <DECKFILE>) {
-  chomp($line);
-  $deck_hash{$line} += 1;
+if ($deckfile ne '') {
+  open DECKFILE, $deckfile
+    or die "Could not open Deck:\"$deckfile\" for reading: $!\n";
+  
+  while (my $line = <DECKFILE>) {
+    chomp($line);
+    $deck_hash{$line} += 1;
+  }
+  
+  close DECKFILE;
 }
-
-close DECKFILE;
 
 %game_hash = %deck_hash;
 
+&refresh_cards_cache;
 
 while (1) {
 
@@ -100,8 +213,15 @@ while (1) {
     if (/^\[Zone.*\[name=(.*) id=.*zone=GRAVEYARD.* OPPOSING (DECK|HAND) /) {
       $op_discard_hash{$1} += 1;
     }
+    if (/^\[Zone.*\[name=(.*) id=.*zone=GRAVEYARD.* OPPOSING SECRET /) {
+      $op_played_hash{Secret} -= 1;
+      $op_played_hash{$1} += 1;
+    }
     if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* OPPOSING HAND /) {
       $op_played_hash{$1} += 1;
+    }
+    if (/^\[Zone.*\[id=.*zone=SECRET.* OPPOSING HAND /) {
+      $op_played_hash{Secret} += 1;
     }
     # Requires 'Bob' logging enabled. Blow away old/previous game data if we found the end of a game
     if (/^\[Bob.*legend rank /) {
@@ -130,6 +250,10 @@ while (1) {
   # Take cards that have been drawn out of the deck
   foreach $card (keys %hero_drawn_hash) {
     $game_hash{$card} -= $hero_drawn_hash{$card};
+    if ($game_hash{$card} < 0 ) {
+      # You can't draw more cards than you have, but this is for the case of a null deck to catch/track the mulligans we throw back
+      $game_hash{$card} += 1;
+    }
   }
   
   # Put back any mulligans
@@ -161,33 +285,24 @@ while (1) {
 
   # Print the current remaining cards in the deck
   printf("Cards in Deck:\n\n");
-  foreach $card (keys %game_hash) {
-    printf("%-24s %d\n", $card, $game_hash{$card}) if $game_hash{$card} > 0;
-  }
+  print_cards(\%game_hash);
   
   # Print the cards that you've played
   printf("\n\n\nCards Played:\n\n");
-  foreach $card (keys %hero_played_hash) {
-    printf("%-24s %d\n", $card, $hero_played_hash{$card}) if $hero_played_hash{$card} > 0;
-  }
+  print_cards(\%hero_played_hash);
+
   if ( $opts{m} ) {
     # Highlight milled/discarded cards separately
-    foreach $card (keys %hero_discard_hash) {
-      printf("%-24s %d*\n", $card, $hero_discard_hash{$card}) if $hero_discard_hash{$card} > 0;
-    }
+    print_cards(\%hero_discard_hash, '*');
   }
   
   # Print the opponent's revealed cards if '-o' selected
   if ( $opts{o} ) {
     printf("\n\n\nOpponent Cards Revealed:\n\n");
-    foreach $card (keys %op_played_hash) {
-      printf("%-24s %d\n", $card, $op_played_hash{$card}) if $op_played_hash{$card} > 0;
-    }
+    print_cards(\%op_played_hash);
     if ( $opts{m} ) {
       # Highlight milled/discarded cards separately
-      foreach $card (keys %op_discard_hash) {
-        printf("%-24s %d*\n", $card, $op_discard_hash{$card}) if $op_discard_hash{$card} > 0;
-      }
+      print_cards(\%op_discard_hash, '*');
     }
   }
 
