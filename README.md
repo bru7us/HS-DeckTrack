@@ -85,6 +85,7 @@ TODO
 * Optional: Display cards in hand (but why? we can see them already)
 * Allow user to define refresh/sleep period
 * Check for and set up the log.config if needed
+* Make easy to run from the Finder for non-Terminal-savvy users
 
 
 If you'd like to:
