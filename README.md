@@ -81,7 +81,6 @@ Version: 0.1  Released: 18 June 2014
 
 TODO
 ----
-* Sort/Display by mana cost
 * Optional: Display cards in hand (but why? we can see them already)
 * Allow user to define refresh/sleep period
 * Check for and set up the log.config if needed
