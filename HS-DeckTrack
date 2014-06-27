@@ -21,6 +21,7 @@ use Getopt::Std;
 use Env qw(HOME);
 
 my %opts;
+my $sleeptime;
 my $logfile;
 my $deckfile;
 my %deck_hash;
@@ -33,6 +34,7 @@ my %hero_mull_hash;
 my %hero_drawn_hash;
 my %hero_played_hash;
 my $DEBUG;
+my $count = 1;
 my $card;
 my $cards_src;
 my $cards_db;
@@ -47,10 +49,11 @@ sub usage {
   printf("\nUsage: [options]");
   printf("\n");
   printf("    -h show this help\n");
-  printf("    -d <path> Path to a file containing your deck. Compulsory!\n");
+  printf("    -d <path> Path to a file containing your deck\n");
   printf("    -l <path> Path to the Hearthstone log file. Default: ~/Library/Logs/Unity/Player.log\n");
-  printf("    -o Print cards revealed by Opponent");
   printf("    -m Highlight Milled/Discarded cards");
+  printf("    -o Print cards revealed by Opponent");
+  printf("    -s <num> sleep for this many seconds between refreshes. Default: 2");
   printf("    -X print debug messages to STDOUT\n");
   printf("");
   exit(1);
@@ -160,9 +163,10 @@ sub load_cache_db {
   }
 }
 
-getopts ('d:hl:moX', \%opts);
+getopts ('d:hl:mos:X', \%opts);
 &usage if $opts{'h'};
 $DEBUG = 1 if $opts{'X'};
+$sleeptime = $opts{'s'} // 2;
 
 $logfile = $opts{l} // $ENV{HOME}.'/Library/Logs/Unity/Player.log';
 $deckfile = $opts{d} // '';
@@ -240,14 +244,18 @@ while (1) {
   
   close LOGFILE;
 
-  print Dumper(\%hero_drawn_hash) if ($DEBUG);
-  print Dumper(\%hero_mull_hash) if ($DEBUG);
-  print Dumper(\%hero_played_hash) if ($DEBUG);
-  print Dumper(\%hero_discard_hash) if ($DEBUG);
-  print Dumper(\%hero_burned_hash) if ($DEBUG);
-  print Dumper(\%op_played_hash) if ($DEBUG);
-  print Dumper(\%op_discard_hash) if ($DEBUG);
-  print Dumper(\%game_hash) if ($DEBUG);
+  if ($DEBUG) {
+    print Dumper(\%hero_drawn_hash);
+    print Dumper(\%hero_mull_hash);
+    print Dumper(\%hero_played_hash);
+    print Dumper(\%hero_discard_hash);
+    print Dumper(\%hero_burned_hash);
+    print Dumper(\%op_played_hash);
+    print Dumper(\%op_discard_hash);
+    print Dumper(\%game_hash);
+
+    print "Loop count: ".$count++."\n";
+  }
   
   # Take cards that have been drawn out of the deck
   foreach $card (keys %hero_drawn_hash) {
@@ -313,5 +321,5 @@ while (1) {
     printf("\n\n*Burned or Discarded");
   }
 
-  sleep 2;
+  sleep $sleeptime;
 }
