@@ -19,11 +19,13 @@ use Data::Dumper;
 use XML::Simple;
 use Getopt::Std;
 use Env qw(HOME);
+use LWP::Simple;
 
 my %opts;
 my $sleeptime;
 my $logfile;
 my $deckfile;
+my $savefile;
 my %deck_hash;
 my %game_hash;
 my %op_played_hash;
@@ -53,7 +55,8 @@ sub usage {
   printf("    -l <path> Path to the Hearthstone log file. Default: ~/Library/Logs/Unity/Player.log\n");
   printf("    -m Highlight Milled/Discarded cards");
   printf("    -o Print cards revealed by Opponent");
-  printf("    -s <num> sleep for this many seconds between refreshes. Default: 2");
+  printf("    -r <num> sleep for this many seconds between refreshes. Default: 2");
+  printf("    -s <path> save the deck out to this file");
   printf("    -X print debug messages to STDOUT\n");
   printf("");
   exit(1);
@@ -163,30 +166,82 @@ sub load_cache_db {
   }
 }
 
-getopts ('d:hl:mos:X', \%opts);
+sub load_deck {
+
+  my $deckref = shift;
+  my $path = shift;
+  my $deckstring;
+  my $cardname;
+  my $cardcount;
+
+  if ( $path =~ /http.*\.hearthpwn\.com\/decks\/(\d+)(.*)/ ) {
+
+    $deckstring = get('http://www.hearthpwn.com/decks/'.$1.'/export/1') or return;
+
+  } else {
+
+    $deckstring = '';
+
+    if ($path ne '') {
+      open DECKFILE, $path
+        or die "Could not open Deck:\"$path\" for reading: $!\n";
+      
+      while (my $line = <DECKFILE>) {
+        $deckstring .= $line;
+      }
+      
+      close DECKFILE;
+    }
+
+  }
+
+  $deckstring =~ s/\s*\<.*\>\s*//g; #Remove markup
+  $deckstring =~ s/\r//g; # Remove annoying carriage returns (grumble)
+  $deckstring =~ s/^\s*\n//g; # Remove blank lines
+  chomp($deckstring); # Remove trailing newline before split
+    
+  foreach my $line (split(/\n/,$deckstring)) {
+    chomp($line);
+    if ( $line =~ m/^\s*(\d)\s*[xX]*\s*(.*)\s*$/ ) { #<== '2x Soulfire', '2 x Soulfire', '2 Soulfire', '2X Soulfire', etc
+      $deckref->{$2} += $1;
+    } elsif ( $line =~ m/^\s*(.*?)\s*[xX]*\s*(\d)\s*$/ ) { #<== 'Soulfire x2', 'Soulfire x 2', 'Soulfire 2', etc
+      $deckref->{$1} += $2;
+    } else {
+      $deckref->{$line} += 1;
+    }
+  }
+
+  if ($savefile ne '') {
+    open SAVEFILE, '>', $savefile
+      or die "Could not open file:\"$savefile\" to write out deck: $!\n";
+
+    foreach my $card (keys %{ $deckref }) {
+      if ($deckref->{$card} > 0) {
+        print SAVEFILE $deckref->{$card}." ".$card."\n";
+      }
+    }
+
+    close SAVEFILE;
+  }
+
+}
+
+getopts ('d:hl:mor:s:X', \%opts);
 &usage if $opts{'h'};
 $DEBUG = 1 if $opts{'X'};
-$sleeptime = $opts{'s'} // 2;
+$sleeptime = $opts{'r'} // 2;
 
 $logfile = $opts{l} // $ENV{HOME}.'/Library/Logs/Unity/Player.log';
 $deckfile = $opts{d} // '';
+$savefile = $opts{s} // '';
 $cards_src = '/Applications/Hearthstone/Data/OSX/cardxml0.unity3d';
 $cards_db = dirname(abs_path($0)).'/extracted_cards.xml';
 
 print "logfile:" . $logfile . "\n" if ($DEBUG);
 print "deckfile:" . $deckfile. "\n" if ($DEBUG);
+print "savefile:" . $savefile. "\n" if ($DEBUG);
 
-if ($deckfile ne '') {
-  open DECKFILE, $deckfile
-    or die "Could not open Deck:\"$deckfile\" for reading: $!\n";
-  
-  while (my $line = <DECKFILE>) {
-    chomp($line);
-    $deck_hash{$line} += 1;
-  }
-  
-  close DECKFILE;
-}
+load_deck(\%deck_hash, $deckfile);
 
 %game_hash = %deck_hash;
 
