@@ -174,10 +174,10 @@ sub load_deck {
   my $cardname;
   my $cardcount;
 
-  if ( $path =~ /http.*\.hearthpwn\.com\/decks\/(\d+)(.*)/ ) {
-
-    $deckstring = get('http://www.hearthpwn.com/decks/'.$1.'/export/1') or return;
-
+  if ( $path =~ /^http.*/ ) {
+    if ( $path =~ /^http.*\.hearthpwn\.com\/decks\/(\d+)(.*)/ ) {
+      $deckstring = get('http://www.hearthpwn.com/decks/'.$1.'/export/1') or return;
+    }
   } else {
 
     $deckstring = '';
@@ -211,7 +211,18 @@ sub load_deck {
     }
   }
 
+  my $overwrite_prompt;
+  my $overwrite_accept = 'y';
+
   if ($savefile ne '') {
+    if (-e $savefile) {
+      print "The file '".$savefile."' already exists. Overwrite? [y/N]: ";
+      chomp($overwrite_prompt = lc(<>));
+      if ($overwrite_prompt ne $overwrite_accept) {
+        return;
+      }
+    }
+
     open SAVEFILE, '>', $savefile
       or die "Could not open file:\"$savefile\" to write out deck: $!\n";
 

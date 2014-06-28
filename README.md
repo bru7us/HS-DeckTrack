@@ -85,8 +85,13 @@ Cards in Deck:
 Change Log
 ----------
 
-Version: 0.4  Released: xx June 2014
-* #UPDATEME#
+Version: 0.4  Released: 28 June 2014
+
+* Sort cards by mana cost
+* Allow CLI user to specify refresh timer (default 2s)
+* Wrap script in Applescript .app bundle to allow launching from Finder (Whoo!!)
+* Added flexibility to deck file format
+* Added abilty to load (and save) decks from hearthpwn
 
 Version: 0.3  Released: 21 June 2014
 
