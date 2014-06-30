@@ -17,6 +17,7 @@ use Cwd 'abs_path';
 use File::Basename;
 use Data::Dumper;
 use XML::Simple;
+use XML::XPath;
 use Getopt::Std;
 use Env qw(HOME);
 use LWP::Simple;
@@ -172,12 +173,21 @@ sub load_deck {
   my $deckref = shift;
   my $path = shift;
   my $deckstring;
-  my $cardname;
-  my $cardcount;
 
   if ( $path =~ /^http.*/ ) {
     if ( $path =~ /^http.*\.hearthpwn\.com\/decks\/(\d+)(.*)/ ) {
       $deckstring = get('http://www.hearthpwn.com/decks/'.$1.'/export/1') or return;
+    } elsif ( $path =~ /^http.*\.hearthhead\.com\/deck=(\d+)\/(.*)/ ) {
+      my $page = get($path) or die $!;
+
+      $page =~ m/<div class="deckguide-cards"(.*)<div id="deckguide-cardnotes">/s;
+      $page = '<html><div class="deckguide-cards"'.$1.'</html>';
+
+      my $html = XML::XPath->new($page);
+      my $names = $html->find('//li');
+      for my $node ($names->get_nodelist) {
+        $deckstring .= $node->string_value."\n";
+      }
     }
   } else {
 
