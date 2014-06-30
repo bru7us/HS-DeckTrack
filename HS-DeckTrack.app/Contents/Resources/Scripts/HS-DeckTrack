@@ -176,9 +176,9 @@ sub load_deck {
   my $deckstring;
 
   if ( $path =~ /^http.*/ ) {
-    if ( $path =~ /^http.*\.hearthpwn\.com\/decks\/(\d+)(.*)/ ) {
+    if ( $path =~ /^http.*\.{0,1}hearthpwn\.com\/decks\/(\d+)(.*)/ ) {
       $deckstring = get('http://www.hearthpwn.com/decks/'.$1.'/export/1') or return;
-    } elsif ( $path =~ /^http.*\.hearthhead\.com\/deck=(\d+)\/(.*)/ ) {
+    } elsif ( $path =~ /^http.*\.{0,1}hearthhead\.com\/deck=(\d+)\/(.*)/ ) {
       my $page = get($path) or die $!;
 
       $page =~ m/<div class="deckguide-cards"(.*)<div id="deckguide-cardnotes">/s;
@@ -189,6 +189,22 @@ sub load_deck {
       for my $node ($names->get_nodelist) {
         $deckstring .= $node->string_value."\n";
       }
+    } elsif ( $path =~ /^http.*\.{0,1}hearthstats\.net\/decks\/(.*)/ ) {
+      my $page = get($path) or die $!;
+
+      $page =~ m/<div class="deckBuilderCardsWrapper">(.*)<img id="deckBuilderFullCardView"/s;
+      $page = '<html><div class="deckBuilderCardsWrapper">'.$1.'</html>';
+
+      my $html = XML::XPath->new($page);
+      my $cards = $html->find('//div[@class="deckBuilderCardsWrapper"]/div');
+      for my $node ($cards->get_nodelist) {
+        my $name = $node->find('div[@class="name"]')->string_value;
+        my $count = $node->find('div[@class="qty"]')->string_value;
+        $deckstring .= $count."x ".$name."\n";
+      }
+    } else {
+      print "Uh oh! Bad or unsupported URL\n".$path."\nProceeding without a deck...";
+      $deckstring = '';
     }
   } else {
 
