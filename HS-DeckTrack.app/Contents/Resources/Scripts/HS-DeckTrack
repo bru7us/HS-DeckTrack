@@ -43,6 +43,7 @@ my $cards_db;
 my %card_cost;
 
 $card_cost{'The Coin'} = 0;
+$card_cost{'Secret'} = '?';
 
 $| = 1; #Disable print buffering
 
