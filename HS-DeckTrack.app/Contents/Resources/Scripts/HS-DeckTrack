@@ -44,7 +44,7 @@ my $cards_db;
 my %card_cost;
 
 $card_cost{'The Coin'} = 0;
-$card_cost{'Secret'} = '?';
+$card_cost{'Secret'} = '-1';
 
 $| = 1; #Disable print buffering
 
@@ -69,9 +69,10 @@ sub print_cards {
   my $mark = shift // '';
   my $cost;
 
-  foreach my $key (sort { $card_cost{$a} <=> $card_cost{$b} or "\L$a" cmp "\L$b" } keys %{ $cards }) {
+  foreach my $key (sort { ($card_cost{$a} // '-1') <=> ($card_cost{$b} // '-1') or "\L$a" cmp "\L$b" } keys %{ $cards }) {
     if ((scalar keys %card_cost) > 1) {
-      $cost = $card_cost{$key} // '?';
+      $cost = $card_cost{$key} // '-1';
+      $cost = '?' if ($cost < 0); # For presentation purposes
       printf(" %-3s| ",$cost) if $cards->{$key} > 0;
     }
     printf("%-24s %d".$mark."\n", $key, $cards->{$key}) if $cards->{$key} > 0;
@@ -149,9 +150,9 @@ sub load_cache_db {
     foreach my $entity ( keys $xmldata->{Entity} ) {
       if (!($entity =~ m/XXX/)) {
         my $tmpname = $xmldata->{Entity}->{$entity}->{Tag}->{CardName}->{enUS} // 0;
-        my $tmpcost = $xmldata->{Entity}->{$entity}->{Tag}->{Cost}->{value} // '?';
+        my $tmpcost = $xmldata->{Entity}->{$entity}->{Tag}->{Cost}->{value} // '-1';
         if ($tmpname) {
-          if ( (!defined $card_cost{$tmpname}) || ( (defined $card_cost{$tmpname}) && ($tmpcost ne '?') ) ) {
+          if ( (!defined $card_cost{$tmpname}) || ( (defined $card_cost{$tmpname}) && ($tmpcost ne '-1') ) ) {
             $card_cost{$tmpname} = $tmpcost;
           }
         }
@@ -208,7 +209,8 @@ sub load_deck {
 
   $deckstring =~ s/\s*\<.*\>\s*//g; #Remove markup
   $deckstring =~ s/\r//g; # Remove annoying carriage returns (grumble)
-  $deckstring =~ s/^\s*\n//g; # Remove blank lines
+  $deckstring =~ s/\n\s*\n/\n/g; # Remove blank lines
+  $deckstring =~ s/\xE2\x80\x99/\x27/g; #Replace 'smart' quotes from TextEdit.app
   chomp($deckstring); # Remove trailing newline before split
     
   foreach my $line (split(/\n/,$deckstring)) {
