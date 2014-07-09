@@ -355,7 +355,7 @@ while (1) {
   # Take cards that have been drawn out of the deck
   foreach $card (keys %hero_drawn_hash) {
     $game_hash{$card} -= $hero_drawn_hash{$card};
-    if ($game_hash{$card} < 0 ) {
+    if ( ($game_hash{$card} < 0) && (scalar(keys %deck_hash) == 0) ) {
       # You can't draw more cards than you have, but this is for the case of a null deck to catch/track the mulligans we throw back
       $game_hash{$card} += 1;
     }
