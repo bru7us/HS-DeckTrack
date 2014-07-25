@@ -299,7 +299,7 @@ while (1) {
     if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY DECK /) {
       $hero_drawn_hash{$1} += 1;
     }
-    if (/^\[Zone.*\[name=(.*) id=.*zone=DECK.* FRIENDLY DECK$/) {
+    if (/^\[Zone.*\[name=(.*) id=.*zone=DECK.*from FRIENDLY HAND.*FRIENDLY DECK$/) {
       $hero_mull_hash{$1} += 1;
     }
     if (/^\[Zone.*\[name=(.*) id=.*zone=(HAND|PLAY).* FRIENDLY HAND /) {
