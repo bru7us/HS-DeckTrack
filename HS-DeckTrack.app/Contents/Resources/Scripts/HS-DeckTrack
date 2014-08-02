@@ -95,7 +95,7 @@ sub print_deck_cards {
       printf("  %-3s| ",$cost) if $cards->{$key} > 0;
     }
     $odds_in_one = ($cards->{$key} / $total_cards);
-    $odds_in_two = 0;
+    $odds_in_two = $odds_in_one;
     if ($total_cards > 1) {
         $odds_in_two = 1 - ( # Find odds of card not found in next 2 and subtract from 1
             (($total_cards - $cards->{$key}) / $total_cards) * # odds of other card found in first draw
