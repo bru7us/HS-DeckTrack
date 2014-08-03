@@ -68,42 +68,32 @@ sub usage {
 sub print_cards {
   my $cards = shift;
   my $mark = shift // '';
-  my $cost;
-
-  foreach my $key (sort { ($card_cost{$a} // '-1') <=> ($card_cost{$b} // '-1') or "\L$a" cmp "\L$b" } keys %{ $cards }) {
-    if ((scalar keys %card_cost) > 1) {
-      $cost = $card_cost{$key} // '-1';
-      $cost = '?' if ($cost < 0); # For presentation purposes
-      printf(" %-3s| ",$cost) if $cards->{$key} > 0;
-    }
-    printf("%-24s %d".$mark."\n", $key, $cards->{$key}) if $cards->{$key} > 0;
-  }
-}
-
-sub print_deck_cards {
-  my $cards = shift;
+  my $odds = shift // 0;
   my $cost;
   my $total_cards = sum values $cards;
   my $odds_in_one;
   my $odds_in_two;
 
-  printf("Cost | %-24s Left | Odds in 1 | Odds in 2\n", "Card");
+  printf("Cost | %-24s Left | Odds in 1 | Odds in 2\n", "Card") if $odds;
   foreach my $key (sort { ($card_cost{$a} // '-1') <=> ($card_cost{$b} // '-1') or "\L$a" cmp "\L$b" } keys %{ $cards }) {
     if ((scalar keys %card_cost) > 1) {
       $cost = $card_cost{$key} // '-1';
       $cost = '?' if ($cost < 0); # For presentation purposes
       printf("  %-3s| ",$cost) if $cards->{$key} > 0;
     }
-    $odds_in_one = ($cards->{$key} / $total_cards);
-    $odds_in_two = $odds_in_one;
-    if ($total_cards > 1) {
+    if ($odds) {
+      $odds_in_one = ($cards->{$key} / $total_cards);
+      $odds_in_two = $odds_in_one;
+      if ($total_cards > 1) {
         $odds_in_two = 1 - ( # Find odds of card not found in next 2 and subtract from 1
-            (($total_cards - $cards->{$key}) / $total_cards) * # odds of other card found in first draw
-            ( ($total_cards - $cards->{$key}) / ($total_cards - 1) ) # odds of other card found in second draw
+          (($total_cards - $cards->{$key}) / $total_cards) * # odds of other card found in first draw
+          ( ($total_cards - $cards->{$key}) / ($total_cards - 1) ) # odds of other card found in second draw
         );
+      }
+      printf("%-24s %-4d | %8.2f%% | %8.2f%%\n", $key, $cards->{$key}, $odds_in_one * 100, $odds_in_two * 100) if $cards->{$key} > 0;
+    } else {
+      printf("%-24s %d".$mark."\n", $key, $cards->{$key}) if $cards->{$key} > 0;
     }
-
-    printf("%-24s %-4d | %8.2f%% | %8.2f%%\n", $key, $cards->{$key}, $odds_in_one * 100, $odds_in_two * 100) if $cards->{$key} > 0;
   }
 }
 
@@ -418,7 +408,7 @@ while (1) {
 
   # Print the current remaining cards in the deck
   printf("Cards in Deck:\n\n");
-  print_deck_cards(\%game_hash);
+  print_cards(\%game_hash, '', 1);
   
   # Print the cards that you've played
   printf("\n\n\nCards Played:\n\n");
