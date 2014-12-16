@@ -142,7 +142,7 @@ sub load_cache_db {
   my $xmldata;
 
   if ( -e $cards_db ) {
-    $xmldata = $xml->XMLin($cards_db, KeyAttr => { Entity => 'CardID', Tag => 'name' }) or $load_failed = 1;
+    $xmldata = $xml->XMLin($cards_db, KeyAttr => { Entity => 'CardID', Tag => 'enumID' }) or $load_failed = 1;
   } else {
     $load_failed = 1;
   }
@@ -150,8 +150,8 @@ sub load_cache_db {
   if (!$load_failed) {
     foreach my $entity ( keys $xmldata->{Entity} ) {
       if (!($entity =~ m/XXX/)) {
-        my $tmpname = $xmldata->{Entity}->{$entity}->{Tag}->{CardName}->{content} // 0;
-        my $tmpcost = $xmldata->{Entity}->{$entity}->{Tag}->{Cost}->{value} // '-1';
+        my $tmpname = $xmldata->{Entity}->{$entity}->{Tag}->{185}->{content} // 0;
+        my $tmpcost = $xmldata->{Entity}->{$entity}->{Tag}->{48}->{value} // '-1';
         if ($tmpname) {
           if ( (!defined $card_cost{$tmpname}) || ( (defined $card_cost{$tmpname}) && ($tmpcost ne '-1') ) ) {
             $card_cost{$tmpname} = $tmpcost;
